@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:dartz/dartz.dart';
 import '../../core/error/failure.dart';
 import '../../core/services/firebase_service.dart';
@@ -13,8 +14,9 @@ class RecordingRepository {
   Future<Either<Failure, RecordingModel>> createRecording({
     required String meetingId,
     required String meetingTitle,
+    required String userId,
     required String localPath,
-    required int duration,
+    required Duration duration,
     required int fileSize,
   }) async {
     try {
@@ -22,12 +24,14 @@ class RecordingRepository {
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         meetingId: meetingId,
         meetingTitle: meetingTitle,
+        userId: userId,
         localPath: localPath,
-        duration: duration,
+        duration: duration.inSeconds,
         fileSize: fileSize,
         createdAt: DateTime.now(),
         expiresAt: DateTime.now().add(const Duration(days: 7)),
         isUploaded: false,
+        status: 'completed',
       );
 
       await _firebaseService.setDocument(
@@ -68,24 +72,53 @@ class RecordingRepository {
       final recordings = <RecordingModel>[];
 
       for (var file in files) {
-        final info = await _recordingService.getRecordingInfo(file.path);
-        if (info != null) {
-          recordings.add(RecordingModel(
-            id: file.path.split('/').last,
-            meetingId: '',
-            meetingTitle: info['name'],
-            localPath: file.path,
-            duration: 0,
-            fileSize: info['size'],
-            createdAt: info['created'],
-            expiresAt: info['created'].add(const Duration(days: 7)),
-          ));
-        }
+        final fileStat = await File(file.path).stat();
+        final duration = await _recordingService.getRecordingDuration(file.path);
+        
+        recordings.add(RecordingModel(
+          id: file.path.split('/').last,
+          meetingId: 'local',
+          meetingTitle: _getRecordingNameFromPath(file.path),
+          userId: 'local',
+          localPath: file.path,
+          duration: duration?.inSeconds ?? 0,
+          fileSize: fileStat.size,
+          createdAt: fileStat.modified,
+          expiresAt: fileStat.modified.add(const Duration(days: 7)),
+          isUploaded: false,
+          status: 'local',
+        ));
       }
+
+      // Sort by creation date (newest first)
+      recordings.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
       return Right(recordings);
     } catch (e) {
       return Left(Failure('Failed to get local recordings: ${e.toString()}'));
+    }
+  }
+
+  String _getRecordingNameFromPath(String path) {
+    final fileName = path.split('/').last;
+    final withoutExtension = fileName.replaceAll(RegExp(r'\.(m4a|aac|mp3)$'), '');
+    final parts = withoutExtension.split('_');
+    
+    if (parts.length > 1) {
+      final meetingId = parts[0];
+      final timestamp = parts.length > 1 ? parts[1] : '';
+      return 'Meeting $meetingId - ${_formatTimestamp(timestamp)}';
+    }
+    
+    return withoutExtension;
+  }
+
+  String _formatTimestamp(String timestamp) {
+    try {
+      final date = DateTime.fromMillisecondsSinceEpoch(int.parse(timestamp));
+      return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+    } catch (e) {
+      return timestamp;
     }
   }
 
@@ -100,8 +133,12 @@ class RecordingRepository {
 
   Future<Either<Failure, void>> deleteLocalRecording(String filePath) async {
     try {
-      await _recordingService.deleteRecording(filePath);
-      return const Right(null);
+      final success = await _recordingService.deleteRecording(filePath);
+      if (success) {
+        return const Right(null);
+      } else {
+        return Left(Failure('Failed to delete local recording'));
+      }
     } catch (e) {
       return Left(Failure('Failed to delete local recording: ${e.toString()}'));
     }
@@ -119,16 +156,20 @@ class RecordingRepository {
   Future<Either<Failure, RecordingModel>> uploadRecording({
     required String recordingId,
     required String localPath,
+    required String userId,
   }) async {
     try {
-      // TODO: Implement cloud storage upload
-      // For now, just update the recording status
+      // TODO: Implement actual cloud storage upload
+      // For now, simulate upload and update status
+      await Future.delayed(const Duration(seconds: 2)); // Simulate upload time
+      
       await _firebaseService.updateDocument(
         collection: 'recordings',
         docId: recordingId,
         data: {
           'isUploaded': true,
-          'uploadUrl': 'https://storage.example.com/$recordingId',
+          'uploadUrl': 'https://storage.example.com/recordings/$recordingId',
+          'uploadedAt': DateTime.now(),
         },
       );
 
@@ -138,4 +179,28 @@ class RecordingRepository {
       return Left(Failure('Failed to upload recording: ${e.toString()}'));
     }
   }
+
+  Future<Either<Failure, void>> playRecording(String filePath) async {
+    try {
+      await _recordingService.playRecording(filePath);
+      return const Right(null);
+    } catch (e) {
+      return Left(Failure('Failed to play recording: ${e.toString()}'));
+    }
+  }
+
+  Future<Either<Failure, void>> stopPlayback() async {
+    try {
+      await _recordingService.stopPlayback();
+      return const Right(null);
+    } catch (e) {
+      return Left(Failure('Failed to stop playback: ${e.toString()}'));
+    }
+  }
+
+  Stream<Duration> get playbackPositionStream => 
+      _recordingService.playbackPositionStream;
+
+  Stream<PlayerState> get playbackStateStream => 
+      _recordingService.playbackStateStream;
 }

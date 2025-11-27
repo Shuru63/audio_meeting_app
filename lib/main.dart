@@ -7,10 +7,9 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
-import 'core/services/firebase_service.dart';
 import 'core/services/local_storage_service.dart';
 import 'core/services/notification_service.dart';
-import 'core/services/navigation_service.dart'; // Add this
+import 'core/services/navigation_service.dart';
 import 'injection/dependency_injection.dart';
 import 'firebase_options.dart';
 
@@ -39,7 +38,19 @@ void main() async {
 
     // Initialize Notifications
     print('🔔 Initializing Notifications...');
-    await NotificationService.init();
+    await NotificationService.init(
+      onNotificationTapped: (payload) {
+        // Handle notification tap here
+        print('Notification tapped with payload: $payload');
+        // Example: Navigate to specific screen based on payload
+        if (payload['type'] == 'meeting_invite') {
+          final meetingCode = payload['meeting_code'];
+          if (meetingCode != null) {
+            // Get.toNamed('/meeting', arguments: {'meetingCode': meetingCode});
+          }
+        }
+      },
+    );
     print('✅ Notifications initialized');
 
     // DI Setup (after Firebase & LocalStorage initialized)
