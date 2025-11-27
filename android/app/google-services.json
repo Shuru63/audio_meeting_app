@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1061161360246",
+    "project_id": "andriod-meeting-app",
+    "storage_bucket": "andriod-meeting-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1061161360246:android:a26ede99c01addc9a5f857",
+        "android_client_info": {
+          "package_name": "com.example.audio_meeting_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBlHv-Of_2d_3ooMcSpLHXnfoorWLeGSuA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
