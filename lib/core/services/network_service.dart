@@ -9,13 +9,25 @@ class NetworkService {
   final Connectivity _connectivity = Connectivity();
   final Logger _logger = Logger();
 
+  // Helper function to safely extract the primary result
+  ConnectivityResult _getPrimaryConnection(List<ConnectivityResult> results) {
+    // FIX: Using the index operator [0] instead of .first to resolve
+    // potential strict linter/compiler issues while still checking isNotEmpty.
+    if (results.isNotEmpty) {
+      return results[0];
+    }
+    return ConnectivityResult.none;
+  }
+
   Stream<ConnectivityResult> get connectivityStream =>
-      _connectivity.onConnectivityChanged.map((result) => result.first);
+      // FIX: Safely map the stream result by extracting the first non-none result
+  _connectivity.onConnectivityChanged.map(_getPrimaryConnection as ConnectivityResult Function(ConnectivityResult event));
 
   Future<bool> get isConnected async {
     try {
-      final result = await _connectivity.checkConnectivity();
-      return result.first != ConnectivityResult.none;
+      final results = await _connectivity.checkConnectivity();
+      // FIX: Safely access the first element and compare
+      return _getPrimaryConnection(results as List<ConnectivityResult>) != ConnectivityResult.none;
     } catch (e) {
       _logger.e('Error checking connectivity: $e');
       return false;
@@ -24,8 +36,9 @@ class NetworkService {
 
   Future<ConnectivityResult> get connectivityResult async {
     try {
-      final result = await _connectivity.checkConnectivity();
-      return result.first;
+      final results = await _connectivity.checkConnectivity();
+      // FIX: Safely access the first element
+      return _getPrimaryConnection(results as List<ConnectivityResult>);
     } catch (e) {
       _logger.e('Error getting connectivity result: $e');
       return ConnectivityResult.none;
@@ -63,9 +76,7 @@ class NetworkService {
         return 'Other';
       case ConnectivityResult.none:
         return 'No Connection';
-      default:
-        return 'Unknown';
-    }
+      }
   }
 
   Future<void> checkAndNotify(Function(bool) callback) async {

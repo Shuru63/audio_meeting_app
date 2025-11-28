@@ -11,19 +11,19 @@ class CreateMeetingUseCase {
   Future<Either<Failure, MeetingModel>> call(MeetingModel meeting) async {
     // Validate meeting data
     if (meeting.meetingCode.isEmpty) {
-      return Left(ValidationFailure('Meeting code cannot be empty'));
+      return Left(ValidationFailure('Meeting code cannot be empty') as Failure);
     }
 
     if (meeting.meetingCode.length < 6 || meeting.meetingCode.length > 8) {
-      return Left(ValidationFailure('Meeting code must be 6-8 digits'));
+      return Left(ValidationFailure('Meeting code must be 6-8 digits') as Failure);
     }
 
     if (meeting.hostId.isEmpty) {
-      return Left(ValidationFailure('Host ID cannot be empty'));
+      return Left(ValidationFailure('Host ID cannot be empty') as Failure);
     }
 
     if (meeting.title.isEmpty) {
-      return Left(ValidationFailure('Meeting title cannot be empty'));
+      return Left(ValidationFailure('Meeting title cannot be empty') as Failure);
     }
 
     // Call repository

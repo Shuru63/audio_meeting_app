@@ -55,7 +55,7 @@ dependencies:
   agora_rtc_engine: ^6.3.0
   permission_handler: ^11.1.0
   audio_session: ^0.1.18
-  record: ^4.3.1  # Best for recording
+  record: ^5.0.0  # Best for recording
   just_audio: ^0.9.35
 
 

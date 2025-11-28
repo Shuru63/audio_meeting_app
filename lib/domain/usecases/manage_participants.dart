@@ -13,11 +13,11 @@ class ManageParticipantsUseCase {
     required bool mute,
   }) async {
     if (meetingId.isEmpty) {
-      return Left(ValidationFailure('Meeting ID cannot be empty'));
+      return Left(ValidationFailure('Meeting ID cannot be empty') as Failure);
     }
 
     if (userId.isEmpty) {
-      return Left(ValidationFailure('User ID cannot be empty'));
+      return Left(ValidationFailure('User ID cannot be empty') as Failure);
     }
 
     return await repository.muteParticipant(
@@ -32,11 +32,11 @@ class ManageParticipantsUseCase {
     required String userId,
   }) async {
     if (meetingId.isEmpty) {
-      return Left(ValidationFailure('Meeting ID cannot be empty'));
+      return Left(ValidationFailure('Meeting ID cannot be empty') as Failure);
     }
 
     if (userId.isEmpty) {
-      return Left(ValidationFailure('User ID cannot be empty'));
+      return Left(ValidationFailure('User ID cannot be empty') as Failure);
     }
 
     return await repository.removeParticipant(
@@ -47,7 +47,7 @@ class ManageParticipantsUseCase {
 
   Future<Either<Failure, void>> endMeeting(String meetingId) async {
     if (meetingId.isEmpty) {
-      return Left(ValidationFailure('Meeting ID cannot be empty'));
+      return Left(ValidationFailure('Meeting ID cannot be empty') as Failure);
     }
 
     return await repository.endMeeting(meetingId);
@@ -58,11 +58,11 @@ class ManageParticipantsUseCase {
     required String userId,
   }) async {
     if (meetingId.isEmpty) {
-      return Left(ValidationFailure('Meeting ID cannot be empty'));
+      return Left(ValidationFailure('Meeting ID cannot be empty') as Failure);
     }
 
     if (userId.isEmpty) {
-      return Left(ValidationFailure('User ID cannot be empty'));
+      return Left(ValidationFailure('User ID cannot be empty') as Failure);
     }
 
     return await repository.leaveMeeting(

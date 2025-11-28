@@ -15,19 +15,19 @@ class LoginUserUseCase {
   }) async {
     // Validate inputs
     if (email.isEmpty) {
-      return Left(ValidationFailure('Email cannot be empty'));
+      return Left(ValidationFailure('Email cannot be empty') as Failure);
     }
 
     if (password.isEmpty) {
-      return Left(ValidationFailure('Password cannot be empty'));
+      return Left(ValidationFailure('Password cannot be empty') as Failure);
     }
 
     if (!_isValidEmail(email)) {
-      return Left(ValidationFailure('Invalid email format'));
+      return Left(ValidationFailure('Invalid email format') as Failure);
     }
 
     if (password.length < 6) {
-      return Left(ValidationFailure('Password must be at least 6 characters'));
+      return Left(ValidationFailure('Password must be at least 6 characters') as Failure);
     }
 
     // Call repository

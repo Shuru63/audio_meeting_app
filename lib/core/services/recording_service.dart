@@ -1,3 +1,4 @@
+import 'dart:async' show StreamController;
 import 'dart:io';
 import 'package:record/record.dart';
 import 'package:just_audio/just_audio.dart';
@@ -14,19 +15,19 @@ class RecordingService {
   bool _isRecording = false;
   bool _isPlaying = false;
   DateTime? _recordingStartTime;
-  
+
   // Stream controllers for UI updates
-  final StreamController<Duration> _recordingDurationController = 
+  final StreamController<Duration> _recordingDurationController =
       StreamController<Duration>.broadcast();
-  final StreamController<PlayerState> _playbackStateController = 
+  final StreamController<PlayerState> _playbackStateController =
       StreamController<PlayerState>.broadcast();
-  final StreamController<Duration> _playbackPositionController = 
+  final StreamController<Duration> _playbackPositionController =
       StreamController<Duration>.broadcast();
 
   bool get isRecording => _isRecording;
   bool get isPlaying => _isPlaying;
   String? get currentRecordingPath => _currentRecordingPath;
-  
+
   Stream<Duration> get recordingDurationStream => _recordingDurationController.stream;
   Stream<PlayerState> get playbackStateStream => _playbackStateController.stream;
   Stream<Duration> get playbackPositionStream => _playbackPositionController.stream;
@@ -57,7 +58,7 @@ class RecordingService {
 
       // Setup audio player listeners
       _setupAudioPlayerListeners();
-      
+
       _logger.i("AudioRecordingService initialized successfully");
     } catch (e) {
       _logger.e("Error initializing AudioRecordingService: $e");
@@ -214,7 +215,7 @@ class RecordingService {
 
       await _audioPlayer.setFilePath(filePath);
       await _audioPlayer.play();
-      
+
       _logger.i("Playback started: $filePath");
     } catch (e) {
       _logger.e("Error playing recording: $e");
@@ -305,7 +306,7 @@ class RecordingService {
       if (!await directory.exists()) return [];
 
       final files = await directory.list().toList();
-      
+
       // Filter audio files and sort by modification date (newest first)
       final audioFiles = files.where((file) {
         final path = file.path.toLowerCase();
@@ -347,17 +348,17 @@ class RecordingService {
       if (_isRecording) {
         await stopRecording();
       }
-      
+
       if (_isPlaying) {
         await stopPlayback();
       }
-      
+
       await _audioRecorder.dispose();
       await _audioPlayer.dispose();
       await _recordingDurationController.close();
       await _playbackStateController.close();
       await _playbackPositionController.close();
-      
+
       _logger.i("AudioRecordingService disposed");
     } catch (e) {
       _logger.e("Error disposing AudioRecordingService: $e");

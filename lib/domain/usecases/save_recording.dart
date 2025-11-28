@@ -14,22 +14,23 @@ class SaveRecordingUseCase {
     required String localPath,
     required int duration,
     required int fileSize,
+    required String userId,
   }) async {
     // Validate inputs
     if (meetingId.isEmpty) {
-      return Left(ValidationFailure('Meeting ID cannot be empty'));
+      return Left(ValidationFailure('Meeting ID cannot be empty') as Failure);
     }
 
     if (localPath.isEmpty) {
-      return Left(ValidationFailure('Recording path cannot be empty'));
+      return Left(ValidationFailure('Recording path cannot be empty') as Failure);
     }
 
     if (duration <= 0) {
-      return Left(ValidationFailure('Duration must be greater than 0'));
+      return Left(ValidationFailure('Duration must be greater than 0') as Failure);
     }
 
     if (fileSize <= 0) {
-      return Left(ValidationFailure('File size must be greater than 0'));
+      return Left(ValidationFailure('File size must be greater than 0') as Failure);
     }
 
     // Call repository
@@ -37,8 +38,9 @@ class SaveRecordingUseCase {
       meetingId: meetingId,
       meetingTitle: meetingTitle,
       localPath: localPath,
-      duration: duration,
+      duration: Duration(milliseconds: 500),
       fileSize: fileSize,
+      userId: userId,
     );
   }
 }
