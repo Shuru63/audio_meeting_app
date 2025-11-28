@@ -1,4 +1,4 @@
-import 'dart:async' show StreamController;
+import 'dart:async' show StreamController, Future;
 import 'dart:io';
 import 'package:record/record.dart';
 import 'package:just_audio/just_audio.dart';
@@ -6,6 +6,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:logger/logger.dart';
 
+/// A service class to handle audio recording and playback functionality
+/// using the `record` and `just_audio` packages.
 class RecordingService {
   final AudioRecorder _audioRecorder = AudioRecorder();
   final AudioPlayer _audioPlayer = AudioPlayer();
@@ -18,11 +20,11 @@ class RecordingService {
 
   // Stream controllers for UI updates
   final StreamController<Duration> _recordingDurationController =
-      StreamController<Duration>.broadcast();
+  StreamController<Duration>.broadcast();
   final StreamController<PlayerState> _playbackStateController =
-      StreamController<PlayerState>.broadcast();
+  StreamController<PlayerState>.broadcast();
   final StreamController<Duration> _playbackPositionController =
-      StreamController<Duration>.broadcast();
+  StreamController<Duration>.broadcast();
 
   bool get isRecording => _isRecording;
   bool get isPlaying => _isPlaying;
@@ -39,20 +41,20 @@ class RecordingService {
     return null;
   }
 
-  /// Initialize the audio service
+  /// Initialize the audio service, check and request necessary permissions.
   Future<void> init() async {
     try {
       // Request microphone permission
-      final microphoneStatus = await Permission.microphone.status;
+      var microphoneStatus = await Permission.microphone.status;
       if (!microphoneStatus.isGranted) {
-        await Permission.microphone.request();
+        microphoneStatus = await Permission.microphone.request();
       }
 
-      // Request storage permission (for Android)
-      if (Platform.isAndroid) {
-        final storageStatus = await Permission.storage.status;
+      // Request storage permission (only explicitly needed for older Android APIs)
+      if (Platform.isAndroid && microphoneStatus.isGranted) {
+        var storageStatus = await Permission.storage.status;
         if (!storageStatus.isGranted) {
-          await Permission.storage.request();
+          storageStatus = await Permission.storage.request();
         }
       }
 
@@ -66,6 +68,7 @@ class RecordingService {
     }
   }
 
+  /// Sets up listeners for the audio player state and position streams.
   void _setupAudioPlayerListeners() {
     _audioPlayer.playerStateStream.listen((PlayerState state) {
       _isPlaying = state.playing;
@@ -77,6 +80,7 @@ class RecordingService {
     });
   }
 
+  /// Checks if all necessary permissions (microphone and storage) are granted.
   Future<bool> _checkPermissions() async {
     final microphoneStatus = await Permission.microphone.status;
     if (!microphoneStatus.isGranted) {
@@ -84,6 +88,7 @@ class RecordingService {
       return false;
     }
 
+    // Storage permission check, primarily for compatibility on older Android
     if (Platform.isAndroid) {
       final storageStatus = await Permission.storage.status;
       if (!storageStatus.isGranted) {
@@ -95,6 +100,7 @@ class RecordingService {
     return true;
   }
 
+  /// Gets or creates the directory where recordings will be stored.
   Future<String> _getRecordingsDirectory() async {
     final directory = await getApplicationDocumentsDirectory();
     final recordingsDir = Directory("${directory.path}/AudioMeetings/Recordings");
@@ -106,7 +112,7 @@ class RecordingService {
     return recordingsDir.path;
   }
 
-  /// Start recording with high quality settings
+  /// Start recording with high quality settings.
   Future<bool> startRecording(String meetingId) async {
     try {
       final hasPermission = await _checkPermissions();
@@ -149,6 +155,7 @@ class RecordingService {
     }
   }
 
+  /// Updates the recording duration stream every second while recording is active.
   void _startRecordingTimer() {
     Future.doWhile(() async {
       if (_isRecording && _recordingStartTime != null) {
@@ -161,7 +168,7 @@ class RecordingService {
     });
   }
 
-  /// Stop recording and return file path
+  /// Stop recording and return file path.
   Future<String?> stopRecording() async {
     try {
       if (!_isRecording) {
@@ -182,7 +189,7 @@ class RecordingService {
     }
   }
 
-  /// Pause recording
+  /// Pause recording.
   Future<void> pauseRecording() async {
     try {
       if (_isRecording) {
@@ -194,7 +201,7 @@ class RecordingService {
     }
   }
 
-  /// Resume recording
+  /// Resume recording.
   Future<void> resumeRecording() async {
     try {
       if (_isRecording) {
@@ -206,7 +213,7 @@ class RecordingService {
     }
   }
 
-  /// Play recorded audio
+  /// Play recorded audio from a given file path.
   Future<void> playRecording(String filePath) async {
     try {
       if (_isPlaying) {
@@ -223,7 +230,7 @@ class RecordingService {
     }
   }
 
-  /// Pause playback
+  /// Pause playback.
   Future<void> pausePlayback() async {
     try {
       await _audioPlayer.pause();
@@ -233,7 +240,7 @@ class RecordingService {
     }
   }
 
-  /// Resume playback
+  /// Resume playback.
   Future<void> resumePlayback() async {
     try {
       await _audioPlayer.play();
@@ -243,7 +250,7 @@ class RecordingService {
     }
   }
 
-  /// Stop playback
+  /// Stop playback.
   Future<void> stopPlayback() async {
     try {
       await _audioPlayer.stop();
@@ -253,7 +260,7 @@ class RecordingService {
     }
   }
 
-  /// Seek to specific position
+  /// Seek to specific position.
   Future<void> seekPlayback(Duration position) async {
     try {
       await _audioPlayer.seek(position);
@@ -262,11 +269,14 @@ class RecordingService {
     }
   }
 
-  /// Get recording duration
+  /// Get the duration of a recording file.
   Future<Duration?> getRecordingDuration(String filePath) async {
     try {
       final audioSource = AudioSource.file(filePath);
-      final duration = await audioSource.duration;
+      // setAudioSource loads the file and allows duration to be accessed
+      await _audioPlayer.setAudioSource(audioSource, preload: true);
+      final duration = _audioPlayer.duration;
+      await _audioPlayer.setAudioSource(); // Clear the source
       return duration;
     } catch (e) {
       _logger.e("Error getting recording duration: $e");
@@ -274,30 +284,37 @@ class RecordingService {
     }
   }
 
-  /// Cancel recording & delete file
+  /// Cancel recording & delete the file.
   Future<void> cancelRecording() async {
     try {
+      // 1. Stop the active recording process
       if (_isRecording) {
+        // Stop the recording to ensure the file is closed/finalized
         await _audioRecorder.stop();
-
-        if (_currentRecordingPath != null) {
-          final file = File(_currentRecordingPath!);
-          if (await file.exists()) {
-            await file.delete();
-            _logger.i("Recording canceled & deleted");
-          }
-        }
-
-        _currentRecordingPath = null;
-        _isRecording = false;
-        _recordingStartTime = null;
       }
+
+      // 2. Safely check for and delete the file
+      // FIX: Use a local variable to safely handle the nullable path
+      final pathToDelete = _currentRecordingPath;
+      if (pathToDelete != null) {
+        final file = File(pathToDelete);
+        if (await file.exists()) {
+          await file.delete();
+          _logger.i("Recording canceled & deleted: $pathToDelete");
+        }
+      }
+
+      // 3. Reset internal state
+      _currentRecordingPath = null;
+      _isRecording = false;
+      _recordingStartTime = null;
+
     } catch (e) {
       _logger.e("Error canceling recording: $e");
     }
   }
 
-  /// List all recordings sorted by modification date
+  /// List all recordings sorted by modification date (newest first).
   Future<List<FileSystemEntity>> getAllRecordings() async {
     try {
       final dir = await _getRecordingsDirectory();
@@ -307,13 +324,15 @@ class RecordingService {
 
       final files = await directory.list().toList();
 
-      // Filter audio files and sort by modification date (newest first)
+      // Filter audio files
       final audioFiles = files.where((file) {
         final path = file.path.toLowerCase();
         return path.endsWith('.m4a') || path.endsWith('.aac') || path.endsWith('.mp3');
       }).toList();
 
+      // Sort by modification date (newest first)
       audioFiles.sort((a, b) {
+        // Cast to File to access statSync, assuming only files are returned after filtering
         final statA = (a as File).statSync();
         final statB = (b as File).statSync();
         return statB.modified.compareTo(statA.modified);
@@ -326,7 +345,7 @@ class RecordingService {
     }
   }
 
-  /// Delete a recording
+  /// Delete a recording file from the file system.
   Future<bool> deleteRecording(String filePath) async {
     try {
       final file = File(filePath);
@@ -342,7 +361,7 @@ class RecordingService {
     }
   }
 
-  /// Cleanup resources
+  /// Cleanup resources: stop recording/playback and close streams.
   Future<void> dispose() async {
     try {
       if (_isRecording) {
